@@ -1,0 +1,384 @@
+import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
+import { SettingsSkeletonLoader } from '@/settings/components/SettingsSkeletonLoader';
+import { SettingsPageLayout } from '@/settings/components/layout/SettingsPageLayout';
+import { ApiKeyInput } from '@/settings/developers/components/ApiKeyInput';
+import { ApiKeyNameInput } from '@/settings/developers/components/ApiKeyNameInput';
+import { SettingsDevelopersRoleSelector } from '@/settings/developers/components/SettingsDevelopersRoleSelector';
+import { apiKeyTokenFamilyState } from '@/settings/developers/states/apiKeyTokenFamilyState';
+import { computeNewExpirationDate } from '@/settings/developers/utils/computeNewExpirationDate';
+import { formatExpiration } from '@/settings/developers/utils/formatExpiration';
+import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
+import { ConfirmationModal } from '@/ui/layout/modal/components/ConfirmationModal';
+import { useModal } from '@/ui/layout/modal/hooks/useModal';
+import { useAtomFamilyStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilyStateValue';
+import { useMutation, useQuery } from '@apollo/client/react';
+import { styled } from '@linaria/react';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { isNonEmptyString } from '@sniptt/guards';
+import { useStore } from 'jotai';
+import { useCallback, useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath, isDefined } from 'twenty-shared/utils';
+import { IconRepeat, IconTrash } from 'twenty-ui/icon';
+import { Button } from 'twenty-ui/primitives/input';
+import { Section } from 'twenty-ui/primitives/layout';
+import { H2Title } from 'twenty-ui/primitives/typography';
+import { themeCssVariables } from 'twenty-ui/theme-constants';
+import {
+  AssignRoleToApiKeyDocument,
+  CreateApiKeyDocument,
+  GenerateApiKeyTokenDocument,
+  GetApiKeyDocument,
+  GetApiKeyRolesDocument,
+  RevokeApiKeyDocument,
+} from '~/generated-metadata/graphql';
+import { useNavigateSettings } from '~/hooks/useNavigateSettings';
+import { SETTINGS_API_WEBHOOKS_TABS } from '~/pages/settings/api-webhooks/constants/SettingsApiWebhooksTabs';
+
+import { useToast } from 'twenty-ui/primitives/feedback';
+
+const StyledInfo = styled.span`
+  color: ${themeCssVariables.font.color.light};
+  font-size: ${themeCssVariables.font.size.sm};
+  font-weight: ${themeCssVariables.font.weight.regular};
+`;
+
+const StyledInputContainer = styled.div`
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  gap: ${themeCssVariables.spacing[2]};
+  width: 100%;
+`;
+
+const DELETE_API_KEY_MODAL_ID = 'delete-api-key-modal';
+const REGENERATE_API_KEY_MODAL_ID = 'regenerate-api-key-modal';
+
+export const SettingsDevelopersApiKeyDetail = () => {
+  const { t } = useLingui();
+  const { enqueueToast } = useToast();
+  const { openModal } = useModal();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const navigate = useNavigateSettings();
+  const { apiKeyId = '' } = useParams();
+
+  const jotaiStore = useStore();
+
+  const apiKeyToken = useAtomFamilyStateValue(apiKeyTokenFamilyState, apiKeyId);
+
+  const setApiKeyTokenCallback = useCallback(
+    (apiKeyId: string, token: string) => {
+      jotaiStore.set(apiKeyTokenFamilyState.atomFamily(apiKeyId), token);
+    },
+    [jotaiStore],
+  );
+
+  const [generateOneApiKeyToken] = useMutation(GenerateApiKeyTokenDocument);
+  const [createApiKey] = useMutation(CreateApiKeyDocument);
+  const [revokeApiKey] = useMutation(RevokeApiKeyDocument);
+  const [assignRoleToApiKey] = useMutation(AssignRoleToApiKeyDocument);
+
+  const { data: apiKeyData, loading: apiKeyLoading } = useQuery(
+    GetApiKeyDocument,
+    {
+      variables: {
+        input: {
+          id: apiKeyId,
+        },
+      },
+    },
+  );
+
+  useEffect(() => {
+    if (isDefined(apiKeyData?.apiKey)) {
+      setApiKeyName(apiKeyData.apiKey.name);
+      if (isDefined(apiKeyData.apiKey.role)) {
+        setSelectedRoleId(apiKeyData.apiKey.role.id);
+      }
+    }
+  }, [apiKeyData]);
+
+  const { data: rolesData, loading: rolesLoading } = useQuery(
+    GetApiKeyRolesDocument,
+  );
+
+  const roles = rolesData?.getApiKeyRoles ?? [];
+
+  const apiKey = apiKeyData?.apiKey;
+  const [apiKeyName, setApiKeyName] = useState('');
+  const [selectedRoleId, setSelectedRoleId] = useState<string | undefined>(
+    undefined,
+  );
+
+  const handleRoleChange = async (roleId: string) => {
+    if (!apiKey?.id || !isNonEmptyString(roleId)) return;
+
+    setIsLoading(true);
+    try {
+      await assignRoleToApiKey({
+        variables: {
+          apiKeyId: apiKey.id,
+          roleId,
+        },
+      });
+      enqueueToast({
+        variant: 'success',
+        children: t`Role updated successfully`,
+      });
+      setSelectedRoleId(roleId);
+    } catch {
+      enqueueToast({ variant: 'error', children: t`Error updating role` });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteIntegration = async (redirect = true) => {
+    setIsLoading(true);
+
+    try {
+      await revokeApiKey({
+        variables: {
+          input: {
+            id: apiKeyId,
+          },
+        },
+      });
+      if (redirect) {
+        navigate(
+          SettingsPath.ApiWebhooks,
+          undefined,
+          undefined,
+          undefined,
+          SETTINGS_API_WEBHOOKS_TABS.TABS_IDS.API,
+        );
+      }
+    } catch {
+      enqueueToast({ variant: 'error', children: t`Error deleting api key.` });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createIntegration = async (
+    name: string,
+    newExpiresAt: string | null,
+  ) => {
+    const roleIdToUse = selectedRoleId;
+
+    if (!roleIdToUse) {
+      enqueueToast({
+        variant: 'error',
+        children: t`A role must be selected for the API key`,
+      });
+      return;
+    }
+
+    if (!isDefined(roleIdToUse)) {
+      throw new Error('Role not selected - this should never happen');
+    }
+
+    const { data: newApiKeyData } = await createApiKey({
+      variables: {
+        input: {
+          name: name,
+          expiresAt: newExpiresAt ?? '',
+          roleId: roleIdToUse,
+        },
+      },
+    });
+
+    const newApiKey = newApiKeyData?.createApiKey;
+
+    if (!newApiKey) {
+      return;
+    }
+
+    const tokenData = await generateOneApiKeyToken({
+      variables: {
+        apiKeyId: newApiKey.id,
+        expiresAt: newApiKey?.expiresAt,
+      },
+    });
+    return {
+      id: newApiKey.id,
+      token: tokenData.data?.generateApiKeyToken.token,
+    };
+  };
+
+  const regenerateApiKey = async () => {
+    setIsLoading(true);
+    try {
+      if (isDefined(apiKey)) {
+        if (!isNonEmptyString(apiKeyName)) {
+          enqueueToast({
+            variant: 'error',
+            children: t`API key name cannot be empty`,
+          });
+          return;
+        }
+        const newExpiresAt = computeNewExpirationDate(
+          apiKey.expiresAt,
+          apiKey.createdAt,
+        );
+        const newApiKey = await createIntegration(apiKeyName, newExpiresAt);
+        await deleteIntegration(false);
+
+        if (isNonEmptyString(newApiKey?.token)) {
+          setApiKeyTokenCallback(newApiKey.id, newApiKey.token);
+          navigate(SettingsPath.ApiKeyDetail, {
+            apiKeyId: newApiKey.id,
+          });
+        }
+      }
+    } catch {
+      enqueueToast({
+        variant: 'error',
+        children: t`Error regenerating api key.`,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const confirmationValue = t`yes`;
+
+  if (apiKeyLoading || rolesLoading) {
+    return <SettingsSkeletonLoader />;
+  }
+
+  return (
+    <>
+      {isDefined(apiKey) && (
+        <SettingsPageLayout
+          title={apiKey.name || t`Unnamed API Key`}
+          links={[
+            {
+              children: t`Workspace`,
+              href: getSettingsPath(SettingsPath.General),
+            },
+            {
+              children: t`MCP & APIs`,
+              href: getSettingsPath(
+                SettingsPath.ApiWebhooks,
+                undefined,
+                undefined,
+                SETTINGS_API_WEBHOOKS_TABS.TABS_IDS.API,
+              ),
+            },
+            { children: apiKey.name || t`Unnamed API Key` },
+          ]}
+        >
+          <SettingsPageContainer>
+            <Section>
+              {apiKeyToken ? (
+                <>
+                  <H2Title
+                    title={t`API Key`}
+                    description={t`Copy this key as it will not be visible again`}
+                  />
+                  <ApiKeyInput apiKey={apiKeyToken} />
+                </>
+              ) : (
+                <>
+                  <H2Title
+                    title={t`API Key`}
+                    description={t`Regenerate an API key`}
+                  />
+                  <StyledInputContainer>
+                    <Button
+                      startIcon={<IconRepeat />}
+                      onClick={() => openModal(REGENERATE_API_KEY_MODAL_ID)}
+                    >{t`Regenerate Key`}</Button>
+                    <StyledInfo>
+                      {formatExpiration(apiKey?.expiresAt || '', true, false)}
+                    </StyledInfo>
+                  </StyledInputContainer>
+                </>
+              )}
+            </Section>
+            <Section>
+              <H2Title title={t`Name`} description={t`Name of your API key`} />
+              <ApiKeyNameInput
+                apiKeyName={apiKeyName}
+                apiKeyId={apiKey?.id}
+                disabled={isLoading}
+                onNameUpdate={setApiKeyName}
+              />
+            </Section>
+            <Section>
+              <H2Title
+                title={t`Role`}
+                description={t`What this API can do: Select a user role to define its permissions.`}
+              />
+              <SettingsDevelopersRoleSelector
+                value={selectedRoleId}
+                onChange={handleRoleChange}
+                roles={roles}
+              />
+            </Section>
+            <Section>
+              <H2Title
+                title={t`Expiration`}
+                description={t`When the key will be disabled`}
+              />
+              <SettingsTextInput
+                instanceId={`api-key-expiration-${apiKey?.id}`}
+                placeholder={t`E.g. backoffice integration`}
+                value={formatExpiration(apiKey?.expiresAt || '', true, false)}
+                disabled
+                fullWidth
+              />
+            </Section>
+            <Section>
+              <H2Title
+                title={t`Danger zone`}
+                description={t`Delete this integration`}
+              />
+              <Button
+                startIcon={<IconTrash />}
+                onClick={() => openModal(DELETE_API_KEY_MODAL_ID)}
+                variant="outline"
+                color="danger"
+              >{t`Delete`}</Button>
+            </Section>
+          </SettingsPageContainer>
+        </SettingsPageLayout>
+      )}
+      <ConfirmationModal
+        confirmationPlaceholder={confirmationValue}
+        confirmationValue={confirmationValue}
+        modalInstanceId={DELETE_API_KEY_MODAL_ID}
+        title={t`Delete API key`}
+        subtitle={
+          <Trans>
+            Please type {`"${confirmationValue}"`} to confirm you want to delete
+            this API Key. Be aware that any script using this key will stop
+            working.
+          </Trans>
+        }
+        onConfirmClick={deleteIntegration}
+        confirmButtonText={t`Delete`}
+        loading={isLoading}
+      />
+      <ConfirmationModal
+        confirmationPlaceholder={confirmationValue}
+        confirmationValue={confirmationValue}
+        modalInstanceId={REGENERATE_API_KEY_MODAL_ID}
+        title={t`Regenerate an API key`}
+        subtitle={
+          <Trans>
+            If you’ve lost this key, you can regenerate it, but be aware that
+            any script using this key will need to be updated. Please type
+            {`"${confirmationValue}"`} to confirm.
+          </Trans>
+        }
+        onConfirmClick={regenerateApiKey}
+        confirmButtonText={t`Regenerate key`}
+        loading={isLoading}
+      />
+    </>
+  );
+};

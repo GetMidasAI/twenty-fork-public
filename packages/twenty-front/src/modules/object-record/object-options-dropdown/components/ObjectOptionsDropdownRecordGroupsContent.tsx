@@ -1,0 +1,237 @@
+import { useEffect } from 'react';
+
+import { isManyToOneRelationField } from '@/object-metadata/utils/isManyToOneRelationField';
+import { useObjectOptionsDropdown } from '@/object-record/object-options-dropdown/hooks/useObjectOptionsDropdown';
+import { RecordGroupsVisibilityDropdownSection } from '@/object-record/record-group/components/RecordGroupsVisibilityDropdownSection';
+import { useRecordGroupVisibility } from '@/object-record/record-group/hooks/useRecordGroupVisibility';
+import { hiddenRecordGroupIdsComponentSelector } from '@/object-record/record-group/states/selectors/hiddenRecordGroupIdsComponentSelector';
+import { isRecordGroupingOptionalForViewType } from '@/object-record/record-group/utils/isRecordGroupingOptionalForViewType';
+import { visibleRecordGroupIdsComponentFamilySelector } from '@/object-record/record-group/states/selectors/visibleRecordGroupIdsComponentFamilySelector';
+import { recordIndexGroupFieldMetadataItemComponentState } from '@/object-record/record-index/states/recordIndexGroupFieldMetadataComponentState';
+import { recordIndexRecordGroupSortComponentState } from '@/object-record/record-index/states/recordIndexRecordGroupSortComponentState';
+import { recordIndexShouldHideEmptyRecordGroupsComponentState } from '@/object-record/record-index/states/recordIndexShouldHideEmptyRecordGroupsComponentState';
+import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
+import { DropdownMenuHeader } from '@/ui/layout/dropdown/components/DropdownMenuHeader/DropdownMenuHeader';
+import { DropdownMenuHeaderLeftComponent } from '@/ui/layout/dropdown/components/DropdownMenuHeader/internal/DropdownMenuHeaderLeftComponent';
+import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
+import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
+import { SelectableList } from '@/ui/layout/selectable-list/components/SelectableList';
+import { SelectableListItem } from '@/ui/layout/selectable-list/components/SelectableListItem';
+import { selectedItemIdComponentState } from '@/ui/layout/selectable-list/states/selectedItemIdComponentState';
+import { useAtomComponentFamilySelectorValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentFamilySelectorValue';
+import { useAtomComponentSelectorValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentSelectorValue';
+import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
+import { useGetCurrentViewOnly } from '@/views/hooks/useGetCurrentViewOnly';
+import { useGetAvailableFieldsToGroupRecordsBy } from '@/views/view-picker/hooks/useGetAvailableFieldsToGroupRecordsBy';
+import { useLingui } from '@lingui/react/macro';
+import { isDefined } from 'twenty-shared/utils';
+import {
+  IconArrowsSort,
+  IconChevronLeft,
+  IconCircleOff,
+  IconEyeOff,
+  IconLayoutList,
+  IconPlus,
+} from 'twenty-ui/icon';
+import {
+  MenuItem,
+  MenuItemNavigate,
+  MenuItemSwitch,
+} from 'twenty-ui/primitives/navigation';
+
+export const ObjectOptionsDropdownRecordGroupsContent = () => {
+  const { t } = useLingui();
+  const {
+    viewType,
+    currentContentId,
+    onContentChange,
+    resetContent,
+    handleRecordGroupOrderChangeWithModal,
+    dropdownId,
+  } = useObjectOptionsDropdown();
+
+  const { currentView } = useGetCurrentViewOnly();
+
+  const recordIndexGroupFieldMetadataItem = useAtomComponentStateValue(
+    recordIndexGroupFieldMetadataItemComponentState,
+  );
+
+  const visibleRecordGroupIds = useAtomComponentFamilySelectorValue(
+    visibleRecordGroupIdsComponentFamilySelector,
+    viewType,
+  );
+
+  const hiddenRecordGroupIds = useAtomComponentSelectorValue(
+    hiddenRecordGroupIdsComponentSelector,
+  );
+
+  const recordIndexShouldHideEmptyRecordGroups = useAtomComponentStateValue(
+    recordIndexShouldHideEmptyRecordGroupsComponentState,
+  );
+
+  const shouldHideEmptyGroups =
+    recordIndexShouldHideEmptyRecordGroups ??
+    currentView?.shouldHideEmptyGroups ??
+    false;
+
+  const recordIndexRecordGroupSort = useAtomComponentStateValue(
+    recordIndexRecordGroupSortComponentState,
+  );
+
+  const {
+    handleVisibilityChange: handleRecordGroupVisibilityChange,
+    handleHideEmptyRecordGroupChange,
+  } = useRecordGroupVisibility();
+
+  const { availableFieldsForGrouping } =
+    useGetAvailableFieldsToGroupRecordsBy();
+
+  const isGroupByFieldPickerDisabled =
+    availableFieldsForGrouping.length <= 1 &&
+    !isRecordGroupingOptionalForViewType(viewType);
+
+  const isRelationGroupBy =
+    isDefined(recordIndexGroupFieldMetadataItem) &&
+    isManyToOneRelationField(recordIndexGroupFieldMetadataItem);
+
+  useEffect(() => {
+    if (
+      currentContentId === 'hiddenRecordGroups' &&
+      hiddenRecordGroupIds.length === 0
+    ) {
+      onContentChange('recordGroups');
+    }
+  }, [hiddenRecordGroupIds, currentContentId, onContentChange]);
+
+  const selectedItemId = useAtomComponentStateValue(
+    selectedItemIdComponentState,
+    dropdownId,
+  );
+
+  const selectableItemIdArray = [
+    ...(currentView?.key !== 'INDEX' ? ['GroupBy', 'Sort'] : []),
+    'HideEmptyGroups',
+  ];
+
+  const hiddenGroupsSelectableListId = `${dropdownId}-hidden-groups`;
+
+  return (
+    <DropdownContent>
+      <DropdownMenuHeader
+        StartComponent={
+          <DropdownMenuHeaderLeftComponent
+            onClick={resetContent}
+            Icon={IconChevronLeft}
+          />
+        }
+      >
+        {t`Group`}
+      </DropdownMenuHeader>
+      <DropdownMenuItemsContainer>
+        <SelectableList
+          selectableListInstanceId={dropdownId}
+          focusId={dropdownId}
+          selectableItemIdArray={selectableItemIdArray}
+        >
+          {currentView?.key !== 'INDEX' && (
+            <>
+              <SelectableListItem
+                itemId="GroupBy"
+                onEnter={() =>
+                  !isGroupByFieldPickerDisabled &&
+                  onContentChange('recordGroupFields')
+                }
+              >
+                <MenuItem
+                  focused={selectedItemId === 'GroupBy'}
+                  disabled={isGroupByFieldPickerDisabled}
+                  onClick={() => onContentChange('recordGroupFields')}
+                  LeftIcon={IconLayoutList}
+                  text={t`Group by`}
+                  contextualText={recordIndexGroupFieldMetadataItem?.label}
+                  contextualTextPosition="right"
+                  hasSubMenu
+                />
+              </SelectableListItem>
+              <SelectableListItem
+                itemId="Sort"
+                onEnter={() => onContentChange('recordGroupSort')}
+              >
+                <MenuItem
+                  focused={selectedItemId === 'Sort'}
+                  onClick={() => onContentChange('recordGroupSort')}
+                  LeftIcon={IconArrowsSort}
+                  text={t`Sort`}
+                  contextualText={recordIndexRecordGroupSort}
+                  contextualTextPosition="right"
+                  hasSubMenu
+                />
+              </SelectableListItem>
+            </>
+          )}
+          <SelectableListItem
+            itemId="HideEmptyGroups"
+            onEnter={() => handleHideEmptyRecordGroupChange()}
+          >
+            <MenuItemSwitch
+              focused={selectedItemId === 'HideEmptyGroups'}
+              LeftIcon={IconCircleOff}
+              onCheckedChange={handleHideEmptyRecordGroupChange}
+              checked={shouldHideEmptyGroups}
+              text={t`Hide empty groups`}
+              size="sm"
+            />
+          </SelectableListItem>
+        </SelectableList>
+      </DropdownMenuItemsContainer>
+      {visibleRecordGroupIds.length > 0 && (
+        <>
+          <DropdownMenuSeparator />
+          <RecordGroupsVisibilityDropdownSection
+            title={t`Visible groups`}
+            recordGroupIds={visibleRecordGroupIds}
+            onDragEnd={handleRecordGroupOrderChangeWithModal}
+            onVisibilityChange={handleRecordGroupVisibilityChange}
+            isDraggable={true}
+            showDragGrip={true}
+          />
+        </>
+      )}
+      {isRelationGroupBy && currentView?.key !== 'INDEX' && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItemsContainer scrollable={false}>
+            <MenuItem
+              onClick={() => onContentChange('addRecordGroup')}
+              LeftIcon={IconPlus}
+              text={t`New group`}
+            />
+          </DropdownMenuItemsContainer>
+        </>
+      )}
+      {hiddenRecordGroupIds.length > 0 && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItemsContainer scrollable={false}>
+            <SelectableList
+              selectableListInstanceId={hiddenGroupsSelectableListId}
+              focusId={hiddenGroupsSelectableListId}
+              selectableItemIdArray={['HiddenGroups']}
+            >
+              <SelectableListItem
+                itemId="HiddenGroups"
+                onEnter={() => onContentChange('hiddenRecordGroups')}
+              >
+                <MenuItemNavigate
+                  onClick={() => onContentChange('hiddenRecordGroups')}
+                  LeftIcon={IconEyeOff}
+                  text={`${t`Hidden`} ${recordIndexGroupFieldMetadataItem?.label ?? ''}`}
+                />
+              </SelectableListItem>
+            </SelectableList>
+          </DropdownMenuItemsContainer>
+        </>
+      )}
+    </DropdownContent>
+  );
+};
