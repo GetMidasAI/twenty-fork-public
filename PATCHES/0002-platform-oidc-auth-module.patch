@@ -1,0 +1,42 @@
+Registers the clean-room platform-oidc relying-party module (D-01/D-02 of
+Phase 26 plan 05) into AuthModule: Twenty's OSS codebase has no OIDC RP
+extension point, and twenty-apps only renders inside the authenticated
+workspace shell, so a pre-authentication OIDC Authorization Code + PKCE
+handshake against the platform's own broker is structurally unreachable
+through the custom-app extension framework — the same limitation that
+already forced patch 0001. This is the second deliberate, documented core
+edit. All real RP logic lives in new files under
+packages/twenty-server/src/engine/core-modules/auth/platform-oidc/ (clean-room
+AGPL code, no Enterprise-licensed Twenty file copied/derived/referenced); this
+patch only registers PlatformOidcAuthController/PlatformOidcAuthService —
+two import lines plus one entry each in the controllers/providers arrays.
+See docs/twenty-fork-policy.md for the full policy record.
+
+Apply from the twenty-fork/ root: git apply PATCHES/0002-platform-oidc-auth-module.patch
+
+--- a/packages/twenty-server/src/engine/core-modules/auth/auth.module.ts
++++ b/packages/twenty-server/src/engine/core-modules/auth/auth.module.ts
+@@ -16,6 +16,8 @@ import { MicrosoftAPIsAuthController } from 'src/engine/core-modules/auth/contro
+ import { MicrosoftAuthController } from 'src/engine/core-modules/auth/controllers/microsoft-auth.controller';
+ import { OAuthPropagatorController } from 'src/engine/core-modules/auth/controllers/oauth-propagator.controller';
+ import { SsoAuthController } from 'src/engine/core-modules/auth/controllers/sso-auth.controller';
++import { PlatformOidcAuthController } from 'src/engine/core-modules/auth/platform-oidc/platform-oidc-auth.controller';
++import { PlatformOidcAuthService } from 'src/engine/core-modules/auth/platform-oidc/platform-oidc-auth.service';
+ import { AuthSsoService } from 'src/engine/core-modules/auth/services/auth-sso.service';
+ import { CreateCalendarChannelService } from 'src/engine/core-modules/auth/services/create-calendar-channel.service';
+ import { CreateConnectedAccountService } from 'src/engine/core-modules/auth/services/create-connected-account.service';
+@@ -145,12 +147,14 @@ import { JwtAuthStrategy } from './strategies/jwt.auth.strategy';
+     OAuthPropagatorController,
+     SsoAuthController,
+     ConnectionProviderOAuthController,
++    PlatformOidcAuthController,
+   ],
+   providers: [
+     SignInUpService,
+     AuthService,
+     JwtAuthStrategy,
+     SamlAuthStrategy,
++    PlatformOidcAuthService,
+     AuthResolver,
+     GoogleAPIsService,
+     GoogleApiScopesService,
