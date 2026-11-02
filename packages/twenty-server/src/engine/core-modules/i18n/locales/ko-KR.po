@@ -2698,7 +2698,7 @@ msgid "Created field metadata, parent object metadata not found"
 msgstr "필드 메타데이터가 생성되었으나 상위 객체 메타데이터를 찾을 수 없습니다"
 
 #. js-lingui-id: tpPGe6
-#: src/engine/record-share/utils/validate-share-with-arg-or-throw.util.ts
+#: src/engine/core-modules/record-share/utils/validate-share-with-arg-or-throw.util.ts
 msgid "Creating a record of a private object requires the shareWith argument"
 msgstr "비공개 객체의 레코드를 생성하려면 shareWith 인수가 필요합니다"
 
@@ -3407,7 +3407,7 @@ msgid "Duplicated option {field}"
 msgstr "중복된 옵션 {field}"
 
 #. js-lingui-id: nTBzmZ
-#: src/engine/record-share/utils/resolve-share-with-principal-or-throw.util.ts
+#: src/engine/core-modules/record-share/utils/resolve-share-with-principal-or-throw.util.ts
 msgid "Each shareWith entry must target exactly one of workspaceMemberId, roleId or everyone"
 msgstr "각 shareWith 항목은 workspaceMemberId, roleId 또는 everyone 중 정확히 하나를 대상으로 해야 합니다"
 
@@ -5600,7 +5600,7 @@ msgstr "잘못된 URL 형식입니다."
 
 #. js-lingui-id: Z3Su9z
 #: src/engine/api/graphql/workspace-query-runner/utils/assert-is-valid-uuid.util.ts
-#: src/engine/record-share/utils/resolve-share-with-principal-or-throw.util.ts
+#: src/engine/core-modules/record-share/utils/resolve-share-with-principal-or-throw.util.ts
 msgid "Invalid UUID format."
 msgstr "잘못된 UUID 형식입니다."
 
@@ -9555,17 +9555,17 @@ msgid "Shared record"
 msgstr "공유된 레코드"
 
 #. js-lingui-id: 4FadYd
-#: src/engine/record-share/utils/validate-share-with-principals-or-throw.util.ts
+#: src/engine/core-modules/record-share/utils/validate-share-with-principals-or-throw.util.ts
 msgid "shareWith names a role that does not belong to this workspace"
 msgstr "shareWith에서 이 워크스페이스에 속하지 않는 역할을 지정했습니다"
 
 #. js-lingui-id: 4PQnEW
-#: src/engine/record-share/utils/validate-share-with-principals-or-throw.util.ts
+#: src/engine/core-modules/record-share/utils/validate-share-with-principals-or-throw.util.ts
 msgid "shareWith names a workspace member that does not belong to this workspace"
 msgstr "shareWith에서 이 워크스페이스에 속하지 않는 워크스페이스 멤버를 지정했습니다"
 
 #. js-lingui-id: qTLqMS
-#: src/engine/record-share/utils/validate-share-with-arg-or-throw.util.ts
+#: src/engine/core-modules/record-share/utils/validate-share-with-arg-or-throw.util.ts
 msgid "shareWith names the same principal more than once"
 msgstr "shareWith에서 동일한 주체를 두 번 이상 지정했습니다"
 

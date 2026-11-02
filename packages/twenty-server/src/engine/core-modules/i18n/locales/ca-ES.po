@@ -2698,7 +2698,7 @@ msgid "Created field metadata, parent object metadata not found"
 msgstr "Camp de metadades creat, metadades de l'objecte parent no trobades."
 
 #. js-lingui-id: tpPGe6
-#: src/engine/record-share/utils/validate-share-with-arg-or-throw.util.ts
+#: src/engine/core-modules/record-share/utils/validate-share-with-arg-or-throw.util.ts
 msgid "Creating a record of a private object requires the shareWith argument"
 msgstr "La creació d'un registre d'un objecte privat requereix l'argument shareWith"
 
@@ -3407,7 +3407,7 @@ msgid "Duplicated option {field}"
 msgstr "Opció duplicada {field}"
 
 #. js-lingui-id: nTBzmZ
-#: src/engine/record-share/utils/resolve-share-with-principal-or-throw.util.ts
+#: src/engine/core-modules/record-share/utils/resolve-share-with-principal-or-throw.util.ts
 msgid "Each shareWith entry must target exactly one of workspaceMemberId, roleId or everyone"
 msgstr "Cada entrada de shareWith ha de tenir com a destinació exactament un de workspaceMemberId, roleId o everyone"
 
@@ -5600,7 +5600,7 @@ msgstr "Format d'URL no vàlid."
 
 #. js-lingui-id: Z3Su9z
 #: src/engine/api/graphql/workspace-query-runner/utils/assert-is-valid-uuid.util.ts
-#: src/engine/record-share/utils/resolve-share-with-principal-or-throw.util.ts
+#: src/engine/core-modules/record-share/utils/resolve-share-with-principal-or-throw.util.ts
 msgid "Invalid UUID format."
 msgstr "Format d'UUID no vàlid."
 
@@ -9555,17 +9555,17 @@ msgid "Shared record"
 msgstr "Registre compartit"
 
 #. js-lingui-id: 4FadYd
-#: src/engine/record-share/utils/validate-share-with-principals-or-throw.util.ts
+#: src/engine/core-modules/record-share/utils/validate-share-with-principals-or-throw.util.ts
 msgid "shareWith names a role that does not belong to this workspace"
 msgstr "shareWith especifica un rol que no pertany a aquest espai de treball"
 
 #. js-lingui-id: 4PQnEW
-#: src/engine/record-share/utils/validate-share-with-principals-or-throw.util.ts
+#: src/engine/core-modules/record-share/utils/validate-share-with-principals-or-throw.util.ts
 msgid "shareWith names a workspace member that does not belong to this workspace"
 msgstr "shareWith especifica un membre de l'espai de treball que no pertany a aquest espai de treball"
 
 #. js-lingui-id: qTLqMS
-#: src/engine/record-share/utils/validate-share-with-arg-or-throw.util.ts
+#: src/engine/core-modules/record-share/utils/validate-share-with-arg-or-throw.util.ts
 msgid "shareWith names the same principal more than once"
 msgstr "shareWith especifica el mateix principal més d'una vegada"
 
